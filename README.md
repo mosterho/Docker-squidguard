@@ -1,11 +1,9 @@
-# Docker-squidguard
-Docker Squid Proxy &amp; SquidGuard URL filter. Pairs with an external HTTPD server for custom block pages.
-
+# Squid and Squidguard running in Docker on a Ubuntu server (version 22.04.5)
 # I am very new to Docker, so this is very much a work in process
-Note that my Docker profile is "mosterho19" and github is "mosterho". Source code can be found in github:  https://github.com/mosterho/Docker-squidguard
+Note that my Docker profile is "mosterho19" and github is "mosterho". My Docker repository can be found [here:](https://hub.docker.com/repository/docker/mosterho19/squidguard/general). Source code can be found in [github:](https://github.com/mosterho/Docker-squidguard).
 ## Install Ubuntu server.
-1. Install Ubuntu server. Mine is on VMware Workstation, 8G of memory with 1 processor/4 core and 100Gb of disk. 
-        - Accept defaults during install, but install ssh-server.
+1. Install Ubuntu server. Mine is on VMware Workstation, 8Gb of memory with 1 processor/4 core and 100Gb of disk. 
+        - Accept defaults during install, but check the box to install ssh-server.
 2. sudo apt update
 3. sudo apt full-upgrade
 4. sudo apt install docker docker.io docker-buildx
@@ -18,19 +16,32 @@ Note that my Docker profile is "mosterho19" and github is "mosterho". Source cod
 2. sudo docker pull httpd
 
 ## Setup Docker files
-1. There are two files and two folders that need to be created on your docker server, preferably in a /home/(your user name) folder:
-	- squid.conf -- there are over 9000 lines in the original squid.conf file; this file contains about 100 lines with some of the important comments left in. Please see the github resource for this config file. This contains the minimum required to get squidguard up and running. You may need to tweek this file to get your container up and running.
-	- squidGuard.conf -- Currently setup to include all localnet IP addresses, a blacklist, and whitelist. The blacklists currenly incluide ads, adult, and malware. The whitelist has one example domain. You will need to change the IP address of the redirect statement to match your IP. Please see the github resource for this config file.
-		- NOTE: I have NOT yet created a script to download the blacklists from this [Blacklist FTP Download site](ftp://ftp.ut-capitole.fr/pub/reseau/cache/squidguard_contrib/blacklists.tar.gz) just yet ([same Blacklist website here](https://dsi.ut-capitole.fr/blacklists/download/)).
+1. There are two files and two folders that need to be created on your docker server. I manually created the "/home/mosterho19-Docker-workingdir" folder on my system, but you can name it whatever you wish:
+	- squid.conf -- there are over 9000 lines in the original squid.conf file; this file contains about 100 lines. All of the uncommented lines with some of the important comments were included. This contains the minimum required to get squidguard up and running. You may need to tweek this file to get your container up and running. Please see the github resource for this config file.
+	- squidGuard.conf -- Currently setup to include all localnet IP addresses, a blacklist, and whitelist. The blacklists currenly include ads, adult, and malware. The whitelist has one example domain. You will need to change the IP address of the redirect statement to match your IP (not sure if localhost will work). Please see the github resource for this config file.
+		- NOTE: I have NOT yet created a working script to download the blacklists from this [Blacklist FTP Download site](ftp://ftp.ut-capitole.fr/pub/reseau/cache/squidguard_contrib/blacklists.tar.gz) just yet. Please see the following link for a web based download ([same Blacklist website here](https://dsi.ut-capitole.fr/blacklists/download/)).
 	- directory squidguard -- The blacklist and whitelist files within the squid db directory have been zipped as dbbackup.tar.gz. To unzip it, perform the following:
         - cd ./squidguard
 		- sudo tar -xvzf dbbackup.tar.gz
 			- (tar flags: -x=extract  v=verbose (which you can leave out)  z=gzip format  f=archive name)
-	- directory squidguarderrors (used by the standalone httpd image) -- contains a couple folders and an index.html file. The html file is used for issuing a warning message when attempting to retrieve a blacklisted site.
+	- directory squidguarderrors (used by the standalone httpd image) -- contains a couple folders and an index.html file. The html file is used for issuing a warning message when attempting to retrieve a blacklisted site. 
+	- The three extra .sh files (build-squid-image, start-squidguard, and stop-squidguard) are for convenience only, and you can create your own version of them as needed.
+2. Once you setup the above folders and files, it should look something like this:
 
-There are additional files in github that are useful. There are the original Dockerfile, docker run start, and docker run stop bash scripts.
+![Tree view of folder structure](./Docker_tree.jpg)
+
+3. Work-in-Process/Issues: 
+	- I have not yet figured out how to download and rebuild the blacklists (and whitelist) in the "squidguard" folder. It works when I use Squidguard outside of Docker and just within a "regular" Ubuntu server. 
+		- The only thing I can currently offer is to install an instance of squidguard on the same server and run the "update-blacklist.sh" in a terminal session, then SSH the resulting folders to "(yourfolder)/squidguard/db"
+
+## Starting Squidguard
+
+1. Go to your working directory/folder (again, mine is "/home/mosterho19-Docker-workingdir"). Run the following:
+	- sudo docker run -d -p 3128:3128 -v ./squid.conf:/etc/squid/squid.conf -v ./squidGuard.conf:/etc/squidguard/squidGuard.conf -v ./squidguard:/var/lib/squidguard   --name squidguard  mosterho19/squidguard
+	- sudo docker run -d -p 8080:80 -v ./squidguarderrors:/usr/local/apache2/htdocs --name httpd httpd
+	- sudo docker ps -a
 
 # Next Steps for this Project
 1. Learn how to bring github files into Docker file.
-2. Blacklist download works for a server, but learn how to run squidguard to download and rebuild blacklists along with whitelist within the Docker image.
+2. Blacklist download works for a server, but learn how to modify the Dockerfile to download and rebuild blacklists.
 3. Install on Microsoft Azure.
